@@ -1,0 +1,5 @@
+cron:
+- description: Import Whats On events for the next 7 days and cache them
+  url: /import
+  schedule: every day 01:30
+
