@@ -6,6 +6,7 @@ import os
 import urllib2
 import webapp2
 import jinja2
+import pytz
 import tweepy
 import logging
 from google.appengine.api import memcache
@@ -22,12 +23,21 @@ MEMBERSHIP_EVENT_CODE = 45
 
 TWEET_MEMCACHE_TTL = 60*60*24*7
 
+LOCAL_TZ = pytz.timezone('Europe/London')
+
 jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
 
 
 def days_delta(n):
     return timedelta(days=n)
 
+def format_date_from_memcache(days_ahead=0):
+    """
+
+    :param days_ahead:0-7
+    :return:20141030
+    """
+    return (datetime.now(tz=LOCAL_TZ) + days_delta(days_ahead)).strftime("%Y%m%d")
 
 
 def get_first_int_in_list(src_list):
@@ -116,11 +126,26 @@ class ImportHandler(webapp2.RequestHandler):
                 memcache.set(import_date, event, time=TWEET_MEMCACHE_TTL)
                 return event
 
+
     def get(self):
         for daycount in range(0,6):
-            scandate = (datetime.now() + days_delta(daycount)).strftime("%Y%m%d")
+            scandate = format_date_from_memcache(daycount)
             self.cache_daily_event(scandate)
         self.response.write('<hr>')
+
+
+class HeartBeatHandler(webapp2.RequestHandler):
+    def get(self):
+        """
+        Regular (30mins) check to see if an event is about to start & tweet it
+        """
+
+        today = format_date_from_memcache(0)
+        todays_event = memcache.get(today)
+        starttimestr = todays_event['fields'].get('first_slot', '')
+        start_time = datetime.strptime(starttimestr, '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
+        if timedelta(minutes=10) < start_time - datetime.now(tz=LOCAL_TZ) < timedelta(minutes=40):
+            print 'send reminder!'
 
 
 class HomeHandler(webapp2.RequestHandler):
@@ -131,5 +156,6 @@ class HomeHandler(webapp2.RequestHandler):
 
 app = webapp2.WSGIApplication([
     ('/import', ImportHandler),
+    ('/heartbeat', HeartBeatHandler),
     ('.*', HomeHandler)
 ], debug=True)
