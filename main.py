@@ -47,7 +47,7 @@ def get_first_int_in_list(src_list):
         except ValueError:
             pass
             
-def send_tweet(msg,debug=False):
+def send_tweet(msg, debug=False):
     config = ConfigParser.RawConfigParser()
     config.read('settings.cfg')
     CONSUMER_KEY = config.get('Twitter OAuth', 'CONSUMER_KEY')
@@ -76,12 +76,18 @@ def add_ordinal(day):
 def strip_leading_zero(day):
     return day.lstrip('0')
 
-def craft_tweet(event):
+
+def craft_tweet(event, upcoming=False):
     event_datetime = datetime.strptime(event['fields']['last_slot'], '%Y-%m-%d %H:%M:%S')
     display_day = add_ordinal(strip_leading_zero(event_datetime.strftime('%d')))
     display_month = event_datetime.strftime('%b')
     display_time = event_datetime.strftime('%H:%M')
     display_url = 'http://www.vam.ac.uk/whatson/event/%s' % event['pk']
+
+    if upcoming == True:
+        tweet = 'Just about to start: %s | %s' % (event['fields']['name'].encode('utf8'), display_url)
+        return tweet
+
     if event_datetime.date() == datetime.today().date():
         display_datetime = 'Today at %s' % display_time
     else:
@@ -128,7 +134,7 @@ class ImportHandler(webapp2.RequestHandler):
 
 
     def get(self):
-        for daycount in range(0,6):
+        for daycount in range(0, 6):
             scandate = format_date_from_memcache(daycount)
             self.cache_daily_event(scandate)
         self.response.write('<hr>')
@@ -145,7 +151,8 @@ class HeartBeatHandler(webapp2.RequestHandler):
         starttimestr = todays_event['fields'].get('first_slot', '')
         start_time = datetime.strptime(starttimestr, '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
         if timedelta(minutes=10) < start_time - datetime.now(tz=LOCAL_TZ) < timedelta(minutes=40):
-            print 'send reminder!'
+            tweet = craft_tweet(event=todays_event, upcoming=True)
+            send_tweet(tweet)
 
 
 class HomeHandler(webapp2.RequestHandler):
