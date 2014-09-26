@@ -129,7 +129,12 @@ class EventHandler(webapp2.RequestHandler):
         display_time = event_datetime.strftime('%H:%M')
         display_url = 'http://www.vam.ac.uk/whatson/event/%s' % event['pk']
 
-        tweet = '%s %s %s: %s | %s' % (display_day, display_month, display_time, event['fields']['name'].encode('utf8'), display_url)
+        if event_datetime.date() == datetime.today().date():
+            display_datetime = 'Today at %s' % display_time
+        else:
+            display_datetime = '%s %s %s' % (display_day, display_month, display_time)
+
+        tweet = '%s: %s | %s' % (display_datetime, event['fields']['name'].encode('utf8'), display_url)
 
         return tweet
 
