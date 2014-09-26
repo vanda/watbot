@@ -48,15 +48,13 @@ class JSONParser(Parser):
     def parse(self, method, payload):
         try:
             json = self.json_lib.loads(payload)
-        except Exception as e:
+        except Exception, e:
             raise TweepError('Failed to parse JSON payload: %s' % e)
 
-        needs_cursors = method.session.params.has_key('cursor')
-        if needs_cursors and isinstance(json, dict):
-            if 'previous_cursor' in json:
-                if 'next_cursor' in json:
-                    cursors = json['previous_cursor'], json['next_cursor']
-                    return json, cursors
+        needsCursors = method.parameters.has_key('cursor')
+        if needsCursors and isinstance(json, dict) and 'previous_cursor' in json and 'next_cursor' in json:
+            cursors = json['previous_cursor'], json['next_cursor']
+            return json, cursors
         else:
             return json
 
@@ -76,12 +74,10 @@ class ModelParser(JSONParser):
 
     def parse(self, method, payload):
         try:
-            if method.payload_type is None:
-                return
+            if method.payload_type is None: return
             model = getattr(self.model_factory, method.payload_type)
         except AttributeError:
-            raise TweepError('No model for this payload type: '
-                             '%s' % method.payload_type)
+            raise TweepError('No model for this payload type: %s' % method.payload_type)
 
         json = JSONParser.parse(self, method, payload)
         if isinstance(json, tuple):
@@ -98,3 +94,4 @@ class ModelParser(JSONParser):
             return result, cursors
         else:
             return result
+

@@ -1,10 +1,12 @@
 #!/usr/bin/env python
+import ConfigParser
 from datetime import datetime, timedelta
 import json
 import os
 import urllib2
 import webapp2
 import jinja2
+import tweepy
 
 from roomlookup import ROOMLOOKUPDICT
 
@@ -27,6 +29,18 @@ def get_first_int_in_list(src_list):
         except ValueError:
             pass
             
+def send_tweet(msg):
+    config = ConfigParser.RawConfigParser()
+    config.read('settings.cfg')
+    CONSUMER_KEY = config.get('Twitter OAuth', 'CONSUMER_KEY')
+    CONSUMER_SECRET = config.get('Twitter OAuth', 'CONSUMER_SECRET')
+    ACCESS_TOKEN_KEY = config.get('Twitter OAuth', 'ACCESS_TOKEN_KEY')
+    ACCESS_TOKEN_SECRET = config.get('Twitter OAuth', 'ACCESS_TOKEN_SECRET')
+    auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+    auth.set_access_token(ACCESS_TOKEN_KEY, ACCESS_TOKEN_SECRET)
+    api = tweepy.API(auth)
+    result = api.update_status(msg)
+    return result
 
 
 class MainHandler(webapp2.RequestHandler):

@@ -155,7 +155,7 @@ class FileCache(Cache):
             self._lock_file = self._lock_file_win32
             self._unlock_file = self._unlock_file_win32
         else:
-            print('Warning! FileCache locking not supported on this system!')
+            print 'Warning! FileCache locking not supported on this system!'
             self._lock_file = self._lock_file_dummy
             self._unlock_file = self._unlock_file_dummy
 
@@ -236,11 +236,10 @@ class FileCache(Cache):
             # check if value is expired
             if timeout is None:
                 timeout = self.timeout
-            if timeout > 0:
-                if (time.time() - created_time) >= timeout:
-                    # expired! delete from cache
-                    value = None
-                    self._delete_file(path)
+            if timeout > 0 and (time.time() - created_time) >= timeout:
+                # expired! delete from cache
+                value = None
+                self._delete_file(path)
 
             # unlock and return result
             self._unlock_file(f_lock)
@@ -268,7 +267,6 @@ class FileCache(Cache):
                 continue
             self._delete_file(os.path.join(self.cache_dir, entry))
 
-
 class MemCacheCache(Cache):
     """Cache interface"""
 
@@ -290,8 +288,7 @@ class MemCacheCache(Cache):
     def get(self, key, timeout=None):
         """Get cached entry if exists and not expired
             key: which entry to get
-            timeout: override timeout with this value [optional].
-            DOES NOT WORK HERE
+            timeout: override timeout with this value [optional]. DOES NOT WORK HERE
         """
         return self.client.get(key)
 
@@ -307,14 +304,10 @@ class MemCacheCache(Cache):
         """Delete all cached entries. NO-OP"""
         raise NotImplementedError
 
-
 class RedisCache(Cache):
-    """Cache running in a redis server"""
+    '''Cache running in a redis server'''
 
-    def __init__(self, client,
-                 timeout=60,
-                 keys_container='tweepy:keys',
-                 pre_identifier='tweepy:'):
+    def __init__(self, client, timeout=60, keys_container = 'tweepy:keys', pre_identifier = 'tweepy:'):
         Cache.__init__(self, timeout)
         self.client = client
         self.keys_container = keys_container
@@ -325,9 +318,8 @@ class RedisCache(Cache):
         return timeout > 0 and (time.time() - entry[0]) >= timeout
 
     def store(self, key, value):
-        """Store the key, value pair in our redis server"""
-        # Prepend tweepy to our key,
-        # this makes it easier to identify tweepy keys in our redis server
+        '''Store the key, value pair in our redis server'''
+        # Prepend tweepy to our key, this makes it easier to identify tweepy keys in our redis server
         key = self.pre_identifier + key
         # Get a pipe (to execute several redis commands in one step)
         pipe = self.client.pipeline()
@@ -341,7 +333,7 @@ class RedisCache(Cache):
         pipe.execute()
 
     def get(self, key, timeout=None):
-        """Given a key, returns an element from the redis table"""
+        '''Given a key, returns an element from the redis table'''
         key = self.pre_identifier + key
         # Check to see if we have this key
         unpickled_entry = self.client.get(key)
@@ -364,20 +356,19 @@ class RedisCache(Cache):
         return entry[1]
 
     def count(self):
-        """Note: This is not very efficient,
-        since it retreives all the keys from the redis
-        server to know how many keys we have"""
+        '''Note: This is not very efficient, since it retreives all the keys from the redis
+        server to know how many keys we have'''
         return len(self.client.smembers(self.keys_container))
 
     def delete_entry(self, key):
-        """Delete an object from the redis table"""
+        '''Delete an object from the redis table'''
         pipe = self.client.pipeline()
         pipe.srem(self.keys_container, key)
         pipe.delete(key)
         pipe.execute()
 
     def cleanup(self):
-        """Cleanup all the expired keys"""
+        '''Cleanup all the expired keys'''
         keys = self.client.smembers(self.keys_container)
         for key in keys:
             entry = self.client.get(key)
@@ -387,7 +378,7 @@ class RedisCache(Cache):
                     self.delete_entry(key)
 
     def flush(self):
-        """Delete all entries from the cache"""
+        '''Delete all entries from the cache'''
         keys = self.client.smembers(self.keys_container)
         for key in keys:
             self.delete_entry(key)
