@@ -12,6 +12,7 @@ import bitly_api
 import logging
 from memcache_decorator import cached
 from google.appengine.api import memcache
+from random import choice
 from roomlookup import ROOMLOOKUPDICT
 
 WORKSHOP = 15
@@ -90,7 +91,7 @@ def strip_leading_zero(day):
 
 
 def craft_tweet(event, upcoming=False):
-    event_datetime = datetime.strptime(event['fields']['first_slot'], '%Y-%m-%d %H:%M:%S')
+    event_datetime = datetime.strptime(event['event_dt'], '%Y-%m-%d %H:%M:%S')
     display_day = add_ordinal(strip_leading_zero(event_datetime.strftime('%d')))
     display_month = event_datetime.strftime('%b')
     display_time = event_datetime.strftime('%H:%M')
@@ -116,21 +117,44 @@ def get_events_on_date(scandate):
     return data
 
 
-def filter_irrelevant_events(events, select_date):
-    relevant = []
-    select_date = datetime.strptime(select_date, '%Y%m%d')
 
-    for d in events:
-        if d['fields']['event_type'] in [WORKSHOP, SPECIAL_EVENT, EVENING_TALK_CODE, BSL_TALK, SEMINAR, MEMBERSHIP_EVENT_CODE]:
+def check_for_matching_dates(event, current_date):
+    '''
+    Returns True if dates match.
+    '''
+    event_date = datetime.strptime(event['fields']['first_slot'], '%Y-%m-%d %H:%M:%S')
+    if event_date.date() == current_date.date():
+        return True
+    return False
 
-            event_date = datetime.strptime(d['fields']['first_slot'], '%Y-%m-%d %H:%M:%S')
 
-            # Start date must match the current date
-            # This ensure that events that run over multiple days won't be duplicated for any reason
-            if event_date.date() == select_date.date():
-                relevant.append(d)
+def check_for_relevant_event(event):
+    '''
+    Returns True if event is 'interesting'
+    '''
+    if event['fields']['event_type'] in [WORKSHOP, SPECIAL_EVENT, EVENING_TALK_CODE, BSL_TALK, SEMINAR, MEMBERSHIP_EVENT_CODE]:
+        return True
+    return False
 
-    return relevant
+def filter_events(events, current_date):
+    current_date = datetime.strptime(current_date, '%Y%m%d')
+
+    filtered_events = []
+    for event in events:
+        date_match = check_for_matching_dates(event, current_date)
+        relevant = check_for_relevant_event(event)
+        if date_match and relevant:
+            filtered_events.append(event)
+
+    return filtered_events
+
+
+def add_event_date(event, occurance_date):
+    occurance_date = datetime.strptime(occurance_date, '%Y%m%d')
+    event_date = datetime.strptime(event['fields']['first_slot'], '%Y-%m-%d %H:%M:%S')
+    event_date = datetime(occurance_date.year, occurance_date.month, occurance_date.day, event_date.hour, event_date.minute)
+    event['event_dt'] = str(event_date)
+    return event
 
 def prioritise_relevant_events(events):
     for i, d in enumerate(events):
@@ -149,21 +173,26 @@ def craft_bitlylink(url):
 class ImportHandler(webapp2.RequestHandler):
 
     def cache_daily_event(self, import_date):
+
         value = memcache.get(import_date)
         if not value:
-            events = get_events_on_date(import_date)
-            events = filter_irrelevant_events(events, import_date)
-            events = prioritise_relevant_events(events)
+            raw_events = get_events_on_date(import_date)
+            filtered_events = filter_events(raw_events, import_date)
+            relevant_events = prioritise_relevant_events(filtered_events)
             try:
-                event = events[0]
+                event = relevant_events[0]
             except IndexError:
                 logging.info('SQUARK: NO EVENTS FOUND')
+                event = None
+                if len(raw_events) > 0:
+                    event = choice(raw_events)
                 pass
-                # Todo: if nothing returned then go fish for a random?? event
-            else:
-                memcache.set(import_date, event, time=TWEET_MEMCACHE_TTL)
-                logging.info('Set: %s' % memcache.get(import_date))
-                return event
+
+            # Add in event date field
+            event = add_event_date(event, import_date)
+            memcache.set(import_date, event, time=TWEET_MEMCACHE_TTL)
+            logging.info('Set: %s' % memcache.get(import_date))
+            return event
 
 
     def get(self):
@@ -180,7 +209,7 @@ class HeartBeatHandler(webapp2.RequestHandler):
         """
         today = format_date_from_memcache(0)
         todays_event = memcache.get(today)
-        starttimestr = todays_event['fields'].get('first_slot', '')
+        starttimestr = todays_event['event_dt']
         start_time = datetime.strptime(starttimestr, '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
         if timedelta(minutes=10) < start_time - datetime.now(tz=LOCAL_TZ) < timedelta(minutes=40):
             tweet = craft_tweet(event=todays_event, upcoming=True)
@@ -192,7 +221,7 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         """
         Shares upcoming events for the week
         """
-        offset = int(self.request.get('delta',0))
+        offset = int(self.request.get('delta', 0))
         todays_count = 'count_%s' % format_date_from_memcache(offset)
         datetime_offset = memcache.get(todays_count) or 0
         event_datetime = format_date_from_memcache(datetime_offset + offset)
