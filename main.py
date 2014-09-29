@@ -12,7 +12,6 @@ import logging
 from google.appengine.api import memcache
 from roomlookup import ROOMLOOKUPDICT
 
-DEBUG = True
 WORKSHOP = 15
 SPECIAL_EVENT = 24
 EVENING_TALK_CODE = 40
@@ -22,6 +21,16 @@ SEMINAR = 44
 MEMBERSHIP_EVENT_CODE = 45
 
 TWEET_MEMCACHE_TTL = 60*60*24*7
+config = ConfigParser.RawConfigParser()
+config.read('settings.cfg')
+CONSUMER_KEY = config.get('Twitter OAuth', 'CONSUMER_KEY')
+CONSUMER_SECRET = config.get('Twitter OAuth', 'CONSUMER_SECRET')
+ACCESS_TOKEN_KEY = config.get('Twitter OAuth', 'ACCESS_TOKEN_KEY')
+ACCESS_TOKEN_SECRET = config.get('Twitter OAuth', 'ACCESS_TOKEN_SECRET')
+try:
+    DEBUG = bool(config.get('debug', 'DEBUG'))
+except ConfigParser.NoSectionError:
+    DEBUG = True
 
 LOCAL_TZ = pytz.timezone('Europe/London')
 
@@ -50,12 +59,6 @@ def get_first_int_in_list(src_list):
 
 
 def send_tweet(msg, debug=False):
-    config = ConfigParser.RawConfigParser()
-    config.read('settings.cfg')
-    CONSUMER_KEY = config.get('Twitter OAuth', 'CONSUMER_KEY')
-    CONSUMER_SECRET = config.get('Twitter OAuth', 'CONSUMER_SECRET')
-    ACCESS_TOKEN_KEY = config.get('Twitter OAuth', 'ACCESS_TOKEN_KEY')
-    ACCESS_TOKEN_SECRET = config.get('Twitter OAuth', 'ACCESS_TOKEN_SECRET')
     auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
     auth.set_access_token(ACCESS_TOKEN_KEY, ACCESS_TOKEN_SECRET)
     api = tweepy.API(auth)
@@ -185,8 +188,6 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         if event:
             tweet = craft_tweet(event)
             send_tweet(tweet, DEBUG)
-
-
         memcache.set(todays_count, datetime_offset+1, time=TWEET_MEMCACHE_TTL)
 
 
