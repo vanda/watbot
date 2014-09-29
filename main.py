@@ -13,7 +13,6 @@ from google.appengine.api import memcache
 from roomlookup import ROOMLOOKUPDICT
 
 DEBUG = True
-
 WORKSHOP = 15
 SPECIAL_EVENT = 24
 EVENING_TALK_CODE = 40
@@ -32,6 +31,7 @@ jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.di
 def days_delta(n):
     return timedelta(days=n)
 
+
 def format_date_from_memcache(days_ahead=0):
     """
 
@@ -47,7 +47,8 @@ def get_first_int_in_list(src_list):
             return(int(i))
         except ValueError:
             pass
-            
+
+
 def send_tweet(msg, debug=False):
     config = ConfigParser.RawConfigParser()
     config.read('settings.cfg')
@@ -65,6 +66,7 @@ def send_tweet(msg, debug=False):
         result = api.update_status(msg)
     return result
 
+
 def add_ordinal(day):
     if day[-1] == '1':
         return '%sst' % day
@@ -74,12 +76,13 @@ def add_ordinal(day):
         return '%srd' % day
     return '%sth' % day
 
+
 def strip_leading_zero(day):
     return day.lstrip('0')
 
 
 def craft_tweet(event, upcoming=False):
-    event_datetime = datetime.strptime(event['fields']['last_slot'], '%Y-%m-%d %H:%M:%S')
+    event_datetime = datetime.strptime(event['fields']['first_slot'], '%Y-%m-%d %H:%M:%S')
     display_day = add_ordinal(strip_leading_zero(event_datetime.strftime('%d')))
     display_month = event_datetime.strftime('%b')
     display_time = event_datetime.strftime('%H:%M')
@@ -96,19 +99,27 @@ def craft_tweet(event, upcoming=False):
     tweet = '%s: %s | %s' % (display_datetime, event['fields']['name'].encode('utf8'), display_url)
     return tweet
 
+
 def get_events_on_date(scandate):
     urlpath = "http://www.vam.ac.uk/whatson/json/events/day/%s/" % scandate
     response = urllib2.urlopen(urlpath)
     data = json.load(response)
     return data
 
-def filter_irrelevant_events(events):
+
+def filter_irrelevant_events(events, select_date):
     relevant = []
+    select_date = datetime.strptime(select_date, '%Y%m%d')
+
     for d in events:
         if d['fields']['event_type'] in [WORKSHOP, SPECIAL_EVENT, EVENING_TALK_CODE, BSL_TALK, SEMINAR, MEMBERSHIP_EVENT_CODE]:
-            relevant.append(d)
 
-    # Todo: if start date does not match imported date then remove.
+            event_date = datetime.strptime(d['fields']['first_slot'], '%Y-%m-%d %H:%M:%S')
+
+            # Start date must match the current date
+            # This ensure that events that run over multiple days won't be duplicated for any reason
+            if event_date.date() == select_date.date():
+                relevant.append(d)
 
     return relevant
 
@@ -126,17 +137,18 @@ class ImportHandler(webapp2.RequestHandler):
         value = memcache.get(import_date)
         if not value:
             events = get_events_on_date(import_date)
-            events = filter_irrelevant_events(events)
+            events = filter_irrelevant_events(events, import_date)
             events = prioritise_relevant_events(events)
             try:
                 event = events[0]
             except IndexError:
+                logging.info('SQUARK: NO EVENTS FOUND')
                 pass
                 # Todo: if nothing returned then go fish for a random?? event
             else:
                 memcache.set(import_date, event, time=TWEET_MEMCACHE_TTL)
+                logging.info('Set: %s' % memcache.get(import_date))
                 return event
-        logging.info('Set: %s' % memcache.get(import_date))
 
 
     def get(self):
