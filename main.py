@@ -165,19 +165,15 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         """
         Shares upcoming events for the week
         """
-
-        todays_count = 'count_%s' % format_date_from_memcache(0)
-        datetime_offset = memcache.get(todays_count)
-
-        if datetime_offset == None:
-            datetime_offset = 0
-
-        event_datetime = format_date_from_memcache(datetime_offset)
+        offset = int(self.request.get('delta',0))
+        todays_count = 'count_%s' % format_date_from_memcache(offset)
+        datetime_offset = memcache.get(todays_count) or 0
+        event_datetime = format_date_from_memcache(datetime_offset + offset)
         event = memcache.get(event_datetime)
-
         if event:
             tweet = craft_tweet(event)
             send_tweet(tweet, DEBUG)
+
 
         memcache.set(todays_count, datetime_offset+1, time=TWEET_MEMCACHE_TTL)
 
