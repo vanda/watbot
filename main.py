@@ -10,7 +10,6 @@ import pytz
 import tweepy
 import logging
 from google.appengine.api import memcache
-from memcache_decorator import cached
 from roomlookup import ROOMLOOKUPDICT
 
 DEBUG = True
@@ -108,6 +107,9 @@ def filter_irrelevant_events(events):
     for d in events:
         if d['fields']['event_type'] in [WORKSHOP, SPECIAL_EVENT, EVENING_TALK_CODE, BSL_TALK, SEMINAR, MEMBERSHIP_EVENT_CODE]:
             relevant.append(d)
+
+    # Todo: if start date does not match imported date then remove.
+
     return relevant
 
 def prioritise_relevant_events(events):
@@ -130,9 +132,11 @@ class ImportHandler(webapp2.RequestHandler):
                 event = events[0]
             except IndexError:
                 pass
+                # Todo: if nothing returned then go fish for a random?? event
             else:
                 memcache.set(import_date, event, time=TWEET_MEMCACHE_TTL)
                 return event
+        logging.info('Set: %s' % memcache.get(import_date))
 
 
     def get(self):
@@ -147,7 +151,6 @@ class HeartBeatHandler(webapp2.RequestHandler):
         """
         Regular (30mins) check to see if an event is about to start & tweet it
         """
-
         today = format_date_from_memcache(0)
         todays_event = memcache.get(today)
         starttimestr = todays_event['fields'].get('first_slot', '')
@@ -155,6 +158,28 @@ class HeartBeatHandler(webapp2.RequestHandler):
         if timedelta(minutes=10) < start_time - datetime.now(tz=LOCAL_TZ) < timedelta(minutes=40):
             tweet = craft_tweet(event=todays_event, upcoming=True)
             send_tweet(tweet, DEBUG)
+
+
+class SevenDaySharerHandler(webapp2.RequestHandler):
+    def get(self):
+        """
+        Shares upcoming events for the week
+        """
+
+        todays_count = 'count_%s' % format_date_from_memcache(0)
+        datetime_offset = memcache.get(todays_count)
+
+        if datetime_offset == None:
+            datetime_offset = 0
+
+        event_datetime = format_date_from_memcache(datetime_offset)
+        event = memcache.get(event_datetime)
+
+        if event:
+            tweet = craft_tweet(event)
+            send_tweet(tweet, DEBUG)
+
+        memcache.set(todays_count, datetime_offset+1, time=TWEET_MEMCACHE_TTL)
 
 
 class HomeHandler(webapp2.RequestHandler):
@@ -166,5 +191,6 @@ class HomeHandler(webapp2.RequestHandler):
 app = webapp2.WSGIApplication([
     ('/import', ImportHandler),
     ('/heartbeat', HeartBeatHandler),
+    ('/sevendaysharer', SevenDaySharerHandler),
     ('.*', HomeHandler)
 ], debug=True)
