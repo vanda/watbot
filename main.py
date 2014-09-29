@@ -8,7 +8,9 @@ import webapp2
 import jinja2
 import pytz
 import tweepy
+import bitly_api
 import logging
+from memcache_decorator import cached
 from google.appengine.api import memcache
 from roomlookup import ROOMLOOKUPDICT
 
@@ -20,13 +22,17 @@ BSL_TALK = 42
 SEMINAR = 44
 MEMBERSHIP_EVENT_CODE = 45
 
-TWEET_MEMCACHE_TTL = 60*60*24*7
+TWEET_MEMCACHE_TTL = 60*60*24*7 # a week
+BITLY_CACHE_TTL = 60*60*24*32  # a month
+
 config = ConfigParser.RawConfigParser()
 config.read('settings.cfg')
 CONSUMER_KEY = config.get('Twitter OAuth', 'CONSUMER_KEY')
 CONSUMER_SECRET = config.get('Twitter OAuth', 'CONSUMER_SECRET')
 ACCESS_TOKEN_KEY = config.get('Twitter OAuth', 'ACCESS_TOKEN_KEY')
 ACCESS_TOKEN_SECRET = config.get('Twitter OAuth', 'ACCESS_TOKEN_SECRET')
+BITLY_ACCESS_TOKEN = config.get('Bitly', 'BITLY_ACCESS_TOKEN')
+
 try:
     DEBUG = bool(config.get('debug', 'DEBUG'))
 except ConfigParser.NoSectionError:
@@ -43,7 +49,6 @@ def days_delta(n):
 
 def format_date_from_memcache(days_ahead=0):
     """
-
     :param days_ahead:0-7
     :return:20141030
     """
@@ -90,8 +95,9 @@ def craft_tweet(event, upcoming=False):
     display_month = event_datetime.strftime('%b')
     display_time = event_datetime.strftime('%H:%M')
     display_url = 'http://www.vam.ac.uk/whatson/event/%s' % event['pk']
+    display_url = craft_bitlylink(display_url)
 
-    if upcoming == True:
+    if upcoming:
         tweet = 'Just about to start: %s | %s' % (event['fields']['name'].encode('utf8'), display_url)
         return tweet
 
@@ -132,6 +138,12 @@ def prioritise_relevant_events(events):
             events.insert(0, events.pop(i))
     return events
 
+@cached(time=BITLY_CACHE_TTL)
+def craft_bitlylink(url):
+    bitly = bitly_api.Connection(access_token=BITLY_ACCESS_TOKEN)
+    data = bitly.shorten(url)
+    shortlink = data.get('url',url)
+    return shortlink
 
 
 class ImportHandler(webapp2.RequestHandler):
