@@ -224,15 +224,15 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         """
         Shares upcoming events for the week
         """
-
-        # Todo: If event has past don't tweet it!
+        now = datetime.now(tz=LOCAL_TZ)
 
         offset = int(self.request.get('delta', 0))
         todays_count = 'count_%s' % format_date_from_memcache(offset)
         datetime_offset = memcache.get(todays_count) or 0
         event_datetime = format_date_from_memcache(datetime_offset + offset)
         event = memcache.get(event_datetime)
-        if event:
+
+        if event and now < datetime.strptime(event['event_dt'], '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ):
             tweet = craft_tweet(event)
             send_tweet(tweet, DEBUG)
         memcache.set(todays_count, datetime_offset+1, time=TWEET_MEMCACHE_TTL)
