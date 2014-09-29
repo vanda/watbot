@@ -13,6 +13,8 @@ from google.appengine.api import memcache
 from memcache_decorator import cached
 from roomlookup import ROOMLOOKUPDICT
 
+DEBUG = True
+
 WORKSHOP = 15
 SPECIAL_EVENT = 24
 EVENING_TALK_CODE = 40
@@ -58,7 +60,7 @@ def send_tweet(msg, debug=False):
     auth.set_access_token(ACCESS_TOKEN_KEY, ACCESS_TOKEN_SECRET)
     api = tweepy.API(auth)
     if debug:
-        logging.info(msg)
+        logging.info('[DEBUG] Sending tweet: %s' % msg)
         result = 'logged: %s' % msg
     else:
         result = api.update_status(msg)
@@ -152,7 +154,7 @@ class HeartBeatHandler(webapp2.RequestHandler):
         start_time = datetime.strptime(starttimestr, '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
         if timedelta(minutes=10) < start_time - datetime.now(tz=LOCAL_TZ) < timedelta(minutes=40):
             tweet = craft_tweet(event=todays_event, upcoming=True)
-            send_tweet(tweet)
+            send_tweet(tweet, DEBUG)
 
 
 class HomeHandler(webapp2.RequestHandler):
