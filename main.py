@@ -91,6 +91,9 @@ def strip_leading_zero(day):
 
 
 def craft_tweet(event, upcoming=False):
+
+    # ToDo: Ensure that tweet is less than 140 characters
+
     event_datetime = datetime.strptime(event['event_dt'], '%Y-%m-%d %H:%M:%S')
     display_day = add_ordinal(strip_leading_zero(event_datetime.strftime('%d')))
     display_month = event_datetime.strftime('%b')
@@ -221,6 +224,9 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         """
         Shares upcoming events for the week
         """
+
+        # Todo: If event has past don't tweet it!
+
         offset = int(self.request.get('delta', 0))
         todays_count = 'count_%s' % format_date_from_memcache(offset)
         datetime_offset = memcache.get(todays_count) or 0
