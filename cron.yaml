@@ -3,3 +3,10 @@ cron:
   url: /import
   schedule: every day 01:30
 
+- description: Check if event is about to start and then import it
+  url: /heartbeat
+  schedule: every 30 minutes from 09:00 to 22:00
+
+- description: Share upcoming events for the week
+  url: /sevendaysharer
+  schedule: every 20 minutes from 14:59 to 17:01
