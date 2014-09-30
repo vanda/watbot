@@ -24,6 +24,7 @@ BSL_TALK = 42
 SEMINAR = 44
 MEMBERSHIP_EVENT_CODE = 45
 
+TWITTER_CHAR_LIMIT = 140
 TWEET_MEMCACHE_TTL = 60*60*24*7 # a week
 BITLY_CACHE_TTL = 60*60*24*32  # a month
 
@@ -86,6 +87,39 @@ def add_ordinal(day):
 
 def strip_leading_zero(day):
     return day.lstrip('0')
+
+def craft_just_starting_tweet(event):
+    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
+    tweet = 'Just about to start: %s | %s' % (event['fields']['name'].encode('utf8'), display_url)
+    return tweet
+
+def craft_today_tweet(event):
+    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
+    display_datetime = 'Today at %s' % display_time
+    tweet = '%s: %s | %s' % (display_datetime, event['fields']['name'].encode('utf8'), display_url)
+    return tweet
+
+
+def make_tweet_string(display_datetime, display_url, event_title):
+    tweet = '%s: %s | %s' % (display_datetime, event_title, display_url)
+    return tweet
+
+
+def construct_tweet(display_datetime, display_url, event_title):
+    tweet = make_tweet_string(display_datetime, display_url, event_title)
+    if len(tweet) > TWITTER_CHAR_LIMIT:
+        mandatory_chars_len = len('%s: %s | %s' % (display_datetime, ELLIPSIS.encode('utf8'), display_url))
+        event_title = '%s%s' % (event_title[:TWITTER_CHAR_LIMIT - mandatory_chars_len],ELLIPSIS)
+    tweet = make_tweet_string(display_datetime, display_url, event_title)
+    return tweet
+
+
+def craft_upcoming_tweet(event):
+    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
+    display_datetime = '%s %s %s' % (display_day, display_month, display_time)
+    event_title = event['fields']['name'].encode('utf8')
+    tweet = construct_tweet(display_datetime, display_url, event_title)
+    return tweet
 
 
 def craft_tweet(event, upcoming=False):
