@@ -75,8 +75,13 @@ def send_tweet(msg, debug=False):
         logging.info('[DEBUG] Sending tweet: %s' % msg)
         result = 'logged: %s' % msg
     else:
-        result = api.update_status(msg)
-    return result
+        try:
+            result = api.update_status(msg)
+        except tweepy.TweepError as e:
+            logging.info('Send tweet failed: %s' % e.message[0]['message'])
+            return False
+        else:
+            return result
 
 
 def add_ordinal(day):
