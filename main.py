@@ -125,7 +125,6 @@ def craft_today_tweet(event):
     tweet = construct_tweet(display_datetime, display_url, event_title)
     return tweet
 
-
 def make_tweet_string(display_datetime, display_url, event_title):
     tweet = '%s: %s | %s' % (display_datetime, event_title, display_url)
     return tweet
@@ -210,42 +209,34 @@ def add_event_date(event, occurance_date):
 
 def add_priority_to_events(events):
     for i, d in enumerate(events):
-
-        events[i]['priority'] = 0
-
+        d['priority'] = 0
         # We pretty much always want to see Friday Lates
         if 'friday late' in d['fields']['name'].lower():
-            events[i]['priority'] += 100
-
+            d['priority'] += 100
         # If start date is today then probably a one off or opening day
         current_time = datetime.now(tz=LOCAL_TZ)
         if check_for_matching_dates(d, current_time):
-            events[i]['priority'] += 10
-
+            d['priority'] += 10
         # You encourage young people. Collect 10
         if d['fields']['event_type'] == YOUNG_PEOPLES_EVENT:
-            events[i]['priority'] += 10
-
+            d['priority'] += 10
         # Lunchtime talk. Collect 10
         if 'lunchtime' in d['fields']['short_description'].lower():
-            events[i]['priority'] += 10
-
+            d['priority'] += 10
         # Workshop. Collect 10
         if 'workshop' in d['fields']['short_description'].lower():
-            events[i]['priority'] += 10
+            d['priority'] += 10
 
         # Curator mentioned. Collect 10
         if 'curator' in d['fields']['long_description'].lower():
-            events[i]['priority'] += 10
+            d['priority'] += 10
 
         # Membership events are allowed, but it isn't ideal
         if d['fields']['event_type'] == MEMBERSHIP_EVENT_CODE:
-            events[i]['priority'] -= 50
-
+            d['priority'] -= 50
         # We never want to show sold out events. Go directly to jail.  Do not pass Go. Do not collect 200
         if 'sold out' in d['fields']['event_note']:
-            events[i]['priority'] -= 100
-
+            d['priority'] -= 100
     return events
 
 
