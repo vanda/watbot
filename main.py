@@ -16,6 +16,8 @@ from random import choice
 from roomlookup import ROOMLOOKUPDICT
 from vector import Document
 
+DAYS_TO_GET = 7
+
 YOUNG_PEOPLES_EVENT = 10
 WORKSHOP = 15
 SPECIAL_EVENT = 24
@@ -24,6 +26,8 @@ DAILY_TOUR_CODE = 41
 BSL_TALK = 42
 SEMINAR = 44
 MEMBERSHIP_EVENT_CODE = 45
+
+ELLIPSIS = '...'
 
 TWITTER_CHAR_LIMIT = 140
 TWEET_MEMCACHE_TTL = 60*60*24*7 # a week
@@ -76,8 +80,13 @@ def send_tweet(msg, debug=False):
         logging.info('[DEBUG] Sending tweet: %s' % msg)
         result = 'logged: %s' % msg
     else:
-        result = api.update_status(msg)
-    return result
+        try:
+            result = api.update_status(msg)
+        except tweepy.TweepError as e:
+            logging.info('Send tweet failed: %s' % e.message[0]['message'])
+            return False
+        else:
+            return result
 
 
 def add_ordinal(day):
@@ -184,9 +193,8 @@ def filter_events(events, current_date):
 
     filtered_events = []
     for event in events:
-        date_match = check_for_matching_dates(event, current_date)
         relevant = check_for_relevant_event(event)
-        if date_match and relevant:
+        if relevant:
             filtered_events.append(event)
 
     return filtered_events
@@ -208,6 +216,11 @@ def add_priority_to_events(events):
         # We pretty much always want to see Friday Lates
         if 'friday late' in d['fields']['name'].lower():
             events[i]['priority'] += 100
+
+        # If start date is today then probably a one off or opening day
+        current_time = datetime.now(tz=LOCAL_TZ)
+        if check_for_matching_dates(d, current_time):
+            events[i]['priority'] += 10
 
         # You encourage young people. Collect 10
         if d['fields']['event_type'] == YOUNG_PEOPLES_EVENT:
@@ -267,7 +280,8 @@ class ImportHandler(webapp2.RequestHandler):
                 logging.info('SQUARK: NO EVENTS FOUND')
                 event = None
                 if len(raw_events) > 0:
-                    event = choice(raw_events)
+                    sorted_events = sort_events_by_priority(raw_events)
+                    event = sorted_events[0]
 
             # Add in event date field
             event = add_event_date(event, import_date)
@@ -277,7 +291,7 @@ class ImportHandler(webapp2.RequestHandler):
 
 
     def get(self):
-        for daycount in range(0, 6):
+        for daycount in range(0, DAYS_TO_GET):
             scandate = format_date_from_memcache(daycount)
             self.cache_daily_event(scandate)
         self.response.write('<hr>')
@@ -318,21 +332,21 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
 
 class HomeHandler(webapp2.RequestHandler):
     def get(self):
+
+        data = {}
+        data['events'] = []
+
+        for daycount in range(0, DAYS_TO_GET):
+            event_datetime = format_date_from_memcache(daycount)
+            data['events'].append(memcache.get(event_datetime))
+
         template = jinja_environment.get_template('templates/main.html')
-        self.response.out.write(template.render({}))
+        self.response.out.write(template.render(data))
 
-
-class ImageTweeter(webapp2.RequestHandler):
-    def get(self):
-        auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-        auth.set_access_token(ACCESS_TOKEN_KEY, ACCESS_TOKEN_SECRET)
-        api = tweepy.API(auth)
-        api.update_status('TEST...')
 
 app = webapp2.WSGIApplication([
     ('/import', ImportHandler),
     ('/heartbeat', HeartBeatHandler),
     ('/sevendaysharer', SevenDaySharerHandler),
-    ('/imagetweet', ImageTweeter),
     ('.*', HomeHandler)
 ], debug=True)

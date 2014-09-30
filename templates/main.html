@@ -4,19 +4,51 @@
     <meta charset="UTF-8">
     <title>A tweetbot for Victoria and Albert Museum events</title>
     <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<header>
-    <h2>
-        A simple Tweetbot for best of the day events
-    </h2>
-    <hr>
-    You may also be interested in the ical feed!
-        <a href="http://vam-cal.appspot.com/ical">
-            vam-cal.appspot.com/ical
-        </a>
-    <hr>
-</header>
+
+<div class="container-fluid">
+
+    <header class="page-header">
+        <h1>
+            Event of the Day at the Victoria and Albert Museum
+        </h1>
+
+        <p>For full listings, please see <a href="http://www.vam.ac.uk" target="_blank">What's On at the V&A</a>.</p>
+        <p>You may also be interested in the <a href="http://vam-cal.appspot.com/">iCal feed</a>.</p>
+
+        <a class="twitter-follow-button" href="https://twitter.com/VAMEvents" data-size="large" data-show-count="true" data-lang="en">Follow @VAMEvents</a>
+        <script type="text/javascript">window.twttr = (function (d, s, id) { var t, js, fjs = d.getElementsByTagName(s)[0]; if (d.getElementById(id)) return; js = d.createElement(s); js.id = id; js.src= "https://platform.twitter.com/widgets.js"; fjs.parentNode.insertBefore(js, fjs);  return window.twttr || (t = { _e: [], ready: function (f) { t._e.push(f) } });}(document, "script", "twitter-wjs"));</script>
+
+
+    </header>
+
+    <div class="row">
+
+        <div class="col-md-8">
+            {% for event in events %}
+            <div class="event well" data-priority="{{ event['priority'] }}">
+                <h3>{{ event['fields']['name'] }}</h3>
+                <h4>{{ event.get('event_dt') }}</h4>
+                <p>{{ event['fields']['short_description'] }}</p>
+                <p><a href="http://www.vam.ac.uk/whatson/event/{{ event['pk'] }}" target="_blank">More information</a></p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="col-md-4">
+            <a class="twitter-timeline" data-chrome="nofooter noheader" data-dnt="true" href="https://twitter.com/VAMEvents" data-widget-id="516938525443227648">Tweets by @VAMEvents</a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>This list is created a robot. <a href="http://tvtropes.org/pmwiki/pmwiki.php/Main/ThreeLawsCompliant" target="_blank">3 laws safe</a>. Contents may settle during shipping.</p>
+    </footer>
+
+</div>
 
 </body>
 </html>
