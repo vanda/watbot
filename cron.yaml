@@ -2,11 +2,14 @@ cron:
 - description: Import Whats On events for the next 7 days and cache them
   url: /import
   schedule: every day 01:30
+  timezone: Europe/London
 
 - description: Check if event is about to start and then import it
   url: /heartbeat
   schedule: every 30 minutes from 09:00 to 22:00
+  timezone: Europe/London
 
 - description: Share upcoming events for the week
   url: /sevendaysharer
   schedule: every 20 minutes from 14:59 to 17:01
+  timezone: Europe/London
