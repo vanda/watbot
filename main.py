@@ -265,7 +265,8 @@ class ImportHandler(webapp2.RequestHandler):
                 logging.info('SQUARK: NO EVENTS FOUND')
                 event = None
                 if len(raw_events) > 0:
-                    event = choice(raw_events)
+                    sorted_events = sort_events_by_priority(raw_events)
+                    event = sorted_events[0]
 
             # Add in event date field
             event = add_event_date(event, import_date)
