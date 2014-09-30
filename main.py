@@ -187,7 +187,8 @@ def add_priority_to_events(events):
 
 def sort_events_by_priority(events):
     events = sorted(events, key=lambda k: k['priority'])
-    return events.reverse()
+    events.reverse()
+    return events
 
 
 @cached(time=BITLY_CACHE_TTL)
@@ -216,7 +217,6 @@ class ImportHandler(webapp2.RequestHandler):
                 event = None
                 if len(raw_events) > 0:
                     event = choice(raw_events)
-                pass
 
             # Add in event date field
             event = add_event_date(event, import_date)
