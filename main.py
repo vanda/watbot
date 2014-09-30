@@ -88,6 +88,15 @@ def add_ordinal(day):
 def strip_leading_zero(day):
     return day.lstrip('0')
 
+def process_event(event):
+    event_datetime = datetime.strptime(event['event_dt'], '%Y-%m-%d %H:%M:%S')
+    display_day = add_ordinal(strip_leading_zero(event_datetime.strftime('%d')))
+    display_month = event_datetime.strftime('%b')
+    display_time = event_datetime.strftime('%H:%M')
+    display_url = 'http://www.vam.ac.uk/whatson/event/%s' % event['pk']
+    display_url = craft_bitlylink(display_url)
+    return display_day, display_month, display_time, display_url, event_datetime
+
 def craft_just_starting_tweet(event):
     display_day, display_month, display_time, display_url, event_datetime = process_event(event)
     tweet = 'Just about to start: %s | %s' % (event['fields']['name'].encode('utf8'), display_url)
@@ -122,26 +131,12 @@ def craft_upcoming_tweet(event):
     return tweet
 
 
-def craft_tweet(event, upcoming=False):
-
-    # ToDo: Ensure that tweet is less than 140 characters
-
-    event_datetime = datetime.strptime(event['event_dt'], '%Y-%m-%d %H:%M:%S')
-    display_day = add_ordinal(strip_leading_zero(event_datetime.strftime('%d')))
-    display_month = event_datetime.strftime('%b')
-    display_time = event_datetime.strftime('%H:%M')
-    display_url = 'http://www.vam.ac.uk/whatson/event/%s' % event['pk']
-    display_url = craft_bitlylink(display_url)
-
-    if upcoming:
-        tweet = 'Just about to start: %s | %s' % (event['fields']['name'].encode('utf8'), display_url)
-        return tweet
-
+def craft_tweet(event):
+    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
     if event_datetime.date() == datetime.today().date():
-        display_datetime = 'Today at %s' % display_time
+        tweet = craft_today_tweet(event)
     else:
-        display_datetime = '%s %s %s' % (display_day, display_month, display_time)
-    tweet = '%s: %s | %s' % (display_datetime, event['fields']['name'].encode('utf8'), display_url)
+        tweet = craft_upcoming_tweet(event)
     return tweet
 
 
@@ -290,7 +285,7 @@ class HeartBeatHandler(webapp2.RequestHandler):
         starttimestr = todays_event['event_dt']
         start_time = datetime.strptime(starttimestr, '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
         if timedelta(minutes=10) < start_time - datetime.now(tz=LOCAL_TZ) < timedelta(minutes=40):
-            tweet = craft_tweet(event=todays_event, upcoming=True)
+            tweet = craft_just_starting_tweet(event=todays_event)
             send_tweet(tweet, DEBUG)
 
 
