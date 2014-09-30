@@ -314,17 +314,9 @@ class HomeHandler(webapp2.RequestHandler):
         self.response.out.write(template.render({}))
 
 
-class ImageTweeter(webapp2.RequestHandler):
-    def get(self):
-        auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
-        auth.set_access_token(ACCESS_TOKEN_KEY, ACCESS_TOKEN_SECRET)
-        api = tweepy.API(auth)
-        api.update_status('TEST...')
-
 app = webapp2.WSGIApplication([
     ('/import', ImportHandler),
     ('/heartbeat', HeartBeatHandler),
     ('/sevendaysharer', SevenDaySharerHandler),
-    ('/imagetweet', ImageTweeter),
     ('.*', HomeHandler)
 ], debug=True)
