@@ -4,19 +4,49 @@
     <meta charset="UTF-8">
     <title>A tweetbot for Victoria and Albert Museum events</title>
     <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<header>
-    <h2>
-        A simple Tweetbot for best of the day events
-    </h2>
-    <hr>
-    You may also be interested in the ical feed!
-        <a href="http://vam-cal.appspot.com/ical">
-            vam-cal.appspot.com/ical
-        </a>
-    <hr>
-</header>
+
+<div class="container-fluid">
+
+    <header class="page-header">
+        <h1>
+            A simple Tweetbot for best of the day events
+        </h1>
+    </header>
+
+    <div class="row">
+
+        <div class="col-md-8">
+            {% for event in events %}
+            <div class="event well">
+                <h3>{{ event['fields']['name'] }}</h3>
+                <h4>{{ event.get('event_dt') }}</h4>
+                <p>{{ event['fields']['short_description'] }}</p>
+                <p><a href="http://www.vam.ac.uk/whatson/event/{{ event['pk'] }}" target="_blank">More information</a></p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="col-md-4">
+            <a class="twitter-timeline" data-chrome="nofooter noheader" data-dnt="true" href="https://twitter.com/VAMEvents" data-widget-id="516938525443227648">Tweets by @VAMEvents</a>
+            <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+"://platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+        </div>
+
+    </div>
+
+
+    <footer>
+        <p>
+            You may also be interested in the ical feed!
+            <a href="http://vam-cal.appspot.com/ical">
+                vam-cal.appspot.com/ical
+            </a>
+        </p>
+    </footer>
+
+</div>
 
 </body>
 </html>

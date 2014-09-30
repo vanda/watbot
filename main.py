@@ -310,8 +310,16 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
 
 class HomeHandler(webapp2.RequestHandler):
     def get(self):
+
+        data = {}
+        data['events'] = []
+
+        for daycount in range(0, 6):
+            event_datetime = format_date_from_memcache(daycount)
+            data['events'].append(memcache.get(event_datetime))
+
         template = jinja_environment.get_template('templates/main.html')
-        self.response.out.write(template.render({}))
+        self.response.out.write(template.render(data))
 
 
 app = webapp2.WSGIApplication([
