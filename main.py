@@ -85,13 +85,14 @@ def send_tweet(msg, debug=False):
 
 
 def add_ordinal(day):
-    if day[-1] == '1':
-        return '%sst' % day
-    elif day[-1] == '2':
-        return '%snd' % day
-    elif day[-1] == '3':
-        return '%srd' % day
-    return '%sth' % day
+    day = str(day)
+    day_last_character = day[-1]
+    lookup = {"1": "%sst", "2": "%snd", "3": "%srd"}
+
+    try:
+        return lookup[day_last_character] % day
+    except KeyError:
+        return '%sth' % day
 
 
 def strip_leading_zero(day):
