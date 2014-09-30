@@ -14,6 +14,7 @@ from memcache_decorator import cached
 from google.appengine.api import memcache
 from random import choice
 from roomlookup import ROOMLOOKUPDICT
+from vector import Document
 
 YOUNG_PEOPLES_EVENT = 10
 WORKSHOP = 15
@@ -59,6 +60,12 @@ def get_first_int_in_list(src_list):
             return(int(i))
         except ValueError:
             pass
+
+def extract_keywords(doc,keyword_count=5):
+    d = Document(doc, threshold=1)
+    results = d.keywords(top=keyword_count)
+    results = [(round(i,2),j) for (i,j) in results]
+    return results
 
 
 def send_tweet(msg, debug=False):
