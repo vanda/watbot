@@ -28,7 +28,7 @@
 
         <div class="col-md-8">
             {% for event in events %}
-            <div class="event well">
+            <div class="event well" data-priority="{{ event['priority'] }}">
                 <h3>{{ event['fields']['name'] }}</h3>
                 <h4>{{ event.get('event_dt') }}</h4>
                 <p>{{ event['fields']['short_description'] }}</p>
