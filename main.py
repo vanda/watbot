@@ -159,17 +159,37 @@ def add_event_date(event, occurance_date):
     event['event_dt'] = str(event_date)
     return event
 
-def prioritise_relevant_events(events):
+
+def add_priority_to_events(events):
     for i, d in enumerate(events):
+
+        events[i]['priority'] = 0
+
+        # We pretty much always want to see Friday Lates
         if 'Friday Late' in d['fields']['name']:
-            events.insert(0, events.pop(i))
+            events[i]['priority'] += 100
+
+        # Membership events are allowed, but it isn't idea
+        if d['fields']['event_type'] == MEMBERSHIP_EVENT_CODE:
+            events[i]['priority'] -= 50
+
+        # We never want to show sold out events
+        if 'sold out' in d['fields']['event_note']:
+            events[i]['priority'] -= 100
+
     return events
+
+
+def sort_events_by_priority(events):
+    events = sorted(events, key=lambda k: k['priority'])
+    return events.reverse()
+
 
 @cached(time=BITLY_CACHE_TTL)
 def craft_bitlylink(url):
     bitly = bitly_api.Connection(access_token=BITLY_ACCESS_TOKEN)
     data = bitly.shorten(url)
-    shortlink = data.get('url',url)
+    shortlink = data.get('url', url)
     return shortlink
 
 
@@ -180,10 +200,12 @@ class ImportHandler(webapp2.RequestHandler):
         value = memcache.get(import_date)
         if not value:
             raw_events = get_events_on_date(import_date)
-            filtered_events = filter_events(raw_events, import_date)
-            relevant_events = prioritise_relevant_events(filtered_events)
+            prioritised = add_priority_to_events(raw_events)
+            filtered_events = filter_events(prioritised, import_date)
+            sorted_events = sort_events_by_priority(filtered_events)
+
             try:
-                event = relevant_events[0]
+                event = sorted_events[0]
             except IndexError:
                 logging.info('SQUARK: NO EVENTS FOUND')
                 event = None
