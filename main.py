@@ -115,10 +115,15 @@ def craft_tweet(event, upcoming=False):
 
 def get_events_on_date(scandate):
     urlpath = "http://www.vam.ac.uk/whatson/json/events/day/%s/" % scandate
-    response = urllib2.urlopen(urlpath)
-    data = json.load(response)
-    return data
 
+    try:
+        response = urllib2.urlopen(urlpath)
+    except urllib2.HTTPError:
+        logging.info('Unable to get events for %s' % scandate)
+        return []
+    else:
+        data = json.load(response)
+        return data
 
 
 def check_for_matching_dates(event, current_date):
