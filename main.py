@@ -172,19 +172,19 @@ def add_priority_to_events(events):
         if 'friday late' in d['fields']['name'].lower():
             events[i]['priority'] += 100
 
-        # You encourage young people. Collect £10
+        # You encourage young people. Collect 10
         if d['fields']['event_type'] == YOUNG_PEOPLES_EVENT:
             events[i]['priority'] += 10
 
-        # Lunchtime talk. Collect £10
+        # Lunchtime talk. Collect 10
         if 'lunchtime' in d['fields']['short_description'].lower():
             events[i]['priority'] += 10
 
-        # Workshop. Collect £10
+        # Workshop. Collect 10
         if 'workshop' in d['fields']['short_description'].lower():
             events[i]['priority'] += 10
 
-        # Curator mentioned. Collect £10
+        # Curator mentioned. Collect 10
         if 'curator' in d['fields']['long_description'].lower():
             events[i]['priority'] += 10
 
@@ -192,7 +192,7 @@ def add_priority_to_events(events):
         if d['fields']['event_type'] == MEMBERSHIP_EVENT_CODE:
             events[i]['priority'] -= 50
 
-        # We never want to show sold out events. Go directly to jail.  Do not pass Go. Do not collect £200
+        # We never want to show sold out events. Go directly to jail.  Do not pass Go. Do not collect 200
         if 'sold out' in d['fields']['event_note']:
             events[i]['priority'] -= 100
 
@@ -285,9 +285,17 @@ class HomeHandler(webapp2.RequestHandler):
         self.response.out.write(template.render({}))
 
 
+class ImageTweeter(webapp2.RequestHandler):
+    def get(self):
+        auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+        auth.set_access_token(ACCESS_TOKEN_KEY, ACCESS_TOKEN_SECRET)
+        api = tweepy.API(auth)
+        api.update_status('TEST...')
+
 app = webapp2.WSGIApplication([
     ('/import', ImportHandler),
     ('/heartbeat', HeartBeatHandler),
     ('/sevendaysharer', SevenDaySharerHandler),
+    ('/imagetweet', ImageTweeter),
     ('.*', HomeHandler)
 ], debug=True)
