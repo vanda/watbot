@@ -557,6 +557,14 @@ ROOM_RAW_DATA = [
                                        "sponsor": ""}
                        },
                        {
+                           "pk": 28,
+                           "number": "28",
+                           "whatson": "",
+                           "main_category": "British", "category_slug": "british",
+                           "details": {"sub_category": "British Galleries", "title": "Norfolk House Music Room",
+                                       "sponsor": ""}
+                       },
+                       {
                            "pk": 4709,
                            "number": "40",
                            "whatson": "79",
