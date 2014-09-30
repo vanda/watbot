@@ -27,7 +27,7 @@ MEMBERSHIP_EVENT_CODE = 45
 TWITTER_CHAR_LIMIT = 140
 TWEET_MEMCACHE_TTL = 60*60*24*7 # a week
 BITLY_CACHE_TTL = 60*60*24*32  # a month
-
+ELLIPSIS = '...'
 config = ConfigParser.RawConfigParser()
 config.read('settings.cfg')
 CONSUMER_KEY = config.get('Twitter OAuth', 'CONSUMER_KEY')
@@ -35,9 +35,7 @@ CONSUMER_SECRET = config.get('Twitter OAuth', 'CONSUMER_SECRET')
 ACCESS_TOKEN_KEY = config.get('Twitter OAuth', 'ACCESS_TOKEN_KEY')
 ACCESS_TOKEN_SECRET = config.get('Twitter OAuth', 'ACCESS_TOKEN_SECRET')
 BITLY_ACCESS_TOKEN = config.get('Bitly', 'BITLY_ACCESS_TOKEN')
-
 DEBUG = config.get('debug', 'DEBUG') == "True"
-
 LOCAL_TZ = pytz.timezone('Europe/London')
 
 jinja_environment = jinja2.Environment(loader=jinja2.FileSystemLoader(os.path.dirname(__file__)))
@@ -99,13 +97,16 @@ def process_event(event):
 
 def craft_just_starting_tweet(event):
     display_day, display_month, display_time, display_url, event_datetime = process_event(event)
-    tweet = 'Just about to start: %s | %s' % (event['fields']['name'].encode('utf8'), display_url)
+    event_title = event['fields']['name'].encode('utf8')
+    display_datetime = 'Just about to start'
+    tweet = construct_tweet(display_datetime, display_url, event_title)
     return tweet
 
 def craft_today_tweet(event):
     display_day, display_month, display_time, display_url, event_datetime = process_event(event)
     display_datetime = 'Today at %s' % display_time
-    tweet = '%s: %s | %s' % (display_datetime, event['fields']['name'].encode('utf8'), display_url)
+    event_title = event['fields']['name'].encode('utf8')
+    tweet = construct_tweet(display_datetime, display_url, event_title)
     return tweet
 
 
