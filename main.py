@@ -15,6 +15,7 @@ from google.appengine.api import memcache
 from random import choice
 from roomlookup import ROOMLOOKUPDICT
 
+YOUNG_PEOPLES_EVENT = 10
 WORKSHOP = 15
 SPECIAL_EVENT = 24
 EVENING_TALK_CODE = 40
@@ -34,10 +35,7 @@ ACCESS_TOKEN_KEY = config.get('Twitter OAuth', 'ACCESS_TOKEN_KEY')
 ACCESS_TOKEN_SECRET = config.get('Twitter OAuth', 'ACCESS_TOKEN_SECRET')
 BITLY_ACCESS_TOKEN = config.get('Bitly', 'BITLY_ACCESS_TOKEN')
 
-try:
-    DEBUG = bool(config.get('debug', 'DEBUG'))
-except ConfigParser.NoSectionError:
-    DEBUG = True
+DEBUG = config.get('debug', 'DEBUG') == "True"
 
 LOCAL_TZ = pytz.timezone('Europe/London')
 
@@ -140,7 +138,7 @@ def check_for_relevant_event(event):
     '''
     Returns True if event is 'interesting'
     '''
-    if event['fields']['event_type'] in [WORKSHOP, SPECIAL_EVENT, EVENING_TALK_CODE, BSL_TALK, SEMINAR, MEMBERSHIP_EVENT_CODE]:
+    if event['fields']['event_type'] in [YOUNG_PEOPLES_EVENT, WORKSHOP, SPECIAL_EVENT, EVENING_TALK_CODE, BSL_TALK, SEMINAR, MEMBERSHIP_EVENT_CODE]:
         return True
     return False
 
@@ -171,14 +169,30 @@ def add_priority_to_events(events):
         events[i]['priority'] = 0
 
         # We pretty much always want to see Friday Lates
-        if 'Friday Late' in d['fields']['name']:
+        if 'friday late' in d['fields']['name'].lower():
             events[i]['priority'] += 100
 
-        # Membership events are allowed, but it isn't idea
+        # You encourage young people. Collect £10
+        if d['fields']['event_type'] == YOUNG_PEOPLES_EVENT:
+            events[i]['priority'] += 10
+
+        # Lunchtime talk. Collect £10
+        if 'lunchtime' in d['fields']['short_description'].lower():
+            events[i]['priority'] += 10
+
+        # Workshop. Collect £10
+        if 'workshop' in d['fields']['short_description'].lower():
+            events[i]['priority'] += 10
+
+        # Curator mentioned. Collect £10
+        if 'curator' in d['fields']['long_description'].lower():
+            events[i]['priority'] += 10
+
+        # Membership events are allowed, but it isn't ideal
         if d['fields']['event_type'] == MEMBERSHIP_EVENT_CODE:
             events[i]['priority'] -= 50
 
-        # We never want to show sold out events
+        # We never want to show sold out events. Go directly to jail.  Do not pass Go. Do not collect £200
         if 'sold out' in d['fields']['event_note']:
             events[i]['priority'] -= 100
 
