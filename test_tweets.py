@@ -45,7 +45,8 @@ class TestKeywords(TestCase):
         known = [(0.17, u'flight'), (0.17, u'monday'),
          (0.11, u'delayed'), (0.11, u'discovery'),
          (0.11, u'friday'), (0.11, u'hydrogen')]
-        self.assertEquals(results,known)
+        known_list = [j for (i,j) in known]
+        self.assertEquals(results, known_list)
 
 if __name__ == '__main__':
     unittest.main()

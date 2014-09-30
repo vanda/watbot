@@ -28,7 +28,7 @@ SEMINAR = 44
 MEMBERSHIP_EVENT_CODE = 45
 
 ELLIPSIS = '...'
-
+HASHTAG_COUNT = 1
 TWITTER_CHAR_LIMIT = 140
 TWEET_MEMCACHE_TTL = 60*60*24*7 # a week
 BITLY_CACHE_TTL = 60*60*24*32  # a month
@@ -66,9 +66,10 @@ def get_first_int_in_list(src_list):
             pass
 
 def extract_keywords(doc,keyword_count=5):
-    d = Document(doc, threshold=1)
+    d = Document(doc)
     results = d.keywords(top=keyword_count)
-    results = [(round(i,2),j) for (i,j) in results]
+    # results = [(round(i,2),j) for (i,j) in results]
+    results = [j for (i,j) in results]
     return results
 
 
@@ -109,46 +110,64 @@ def process_event(event):
     display_time = event_datetime.strftime('%H:%M')
     display_url = 'http://www.vam.ac.uk/whatson/event/%s' % event['pk']
     display_url = craft_bitlylink(display_url)
-    return display_day, display_month, display_time, display_url, event_datetime
+    hashtag = event.get('keywords',[])
+    logging.info('hashtag')
+    logging.info(hashtag)
+
+    return display_day, display_month, display_time, display_url, event_datetime, hashtag
 
 def craft_just_starting_tweet(event):
-    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
+    display_day, display_month, display_time, display_url, event_datetime, hashtag = process_event(event)
     event_title = event['fields']['name'].encode('utf8')
     display_datetime = 'Just about to start'
-    tweet = construct_tweet(display_datetime, display_url, event_title)
+    tweet = construct_tweet(display_datetime, display_url, event_title, hashtag)
     return tweet
 
 def craft_today_tweet(event):
-    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
+    display_day, display_month, display_time, display_url, event_datetime, hashtag = process_event(event)
     display_datetime = 'Today at %s' % display_time
     event_title = event['fields']['name'].encode('utf8')
-    tweet = construct_tweet(display_datetime, display_url, event_title)
+    tweet = construct_tweet(display_datetime, display_url, event_title, hashtag)
     return tweet
 
-def make_tweet_string(display_datetime, display_url, event_title):
-    tweet = '%s: %s | %s' % (display_datetime, event_title, display_url)
+def make_tweet_string(display_datetime, display_url, event_title, hashtag):
+    for tag in hashtag[:]:
+        if tag in event_title.lower():
+            tagloc = event_title.lower().find(tag)
+            event_title = event_title[:tagloc] + '#' + event_title[tagloc:]
+            hashtag.remove(tag)
+    if hashtag:
+        hashtag = ' '.join(['#%s'% k for k in hashtag][:HASHTAG_COUNT])
+        hashtag = ',' + hashtag
+    else:
+        hashtag = ''
+    # if title much shorter than hashtag list, omit the tags
+    if len(event_title) < len(hashtag)*2:
+        hashtag = ''
+    tweet = '%s:%s%s | %s' % (display_datetime, event_title, hashtag, display_url)
     return tweet
 
 
-def construct_tweet(display_datetime, display_url, event_title):
-    tweet = make_tweet_string(display_datetime, display_url, event_title)
+def construct_tweet(display_datetime, display_url, event_title, hashtag=''):
+    tweet = make_tweet_string(display_datetime, display_url, event_title, hashtag)
     if len(tweet) > TWITTER_CHAR_LIMIT:
-        mandatory_chars_len = len('%s: %s | %s' % (display_datetime, ELLIPSIS.encode('utf8'), display_url))
+        MINIMAL_TWEET_PATTERN = '%s:%s | %s'
+        mandatory_chars_len = len(MINIMAL_TWEET_PATTERN % (display_datetime, ELLIPSIS.encode('utf8'), display_url))
         event_title = '%s%s' % (event_title[:TWITTER_CHAR_LIMIT - mandatory_chars_len],ELLIPSIS)
-    tweet = make_tweet_string(display_datetime, display_url, event_title)
+        tweet = MINIMAL_TWEET_PATTERN % (display_datetime, event_title, display_url)
     return tweet
 
 
 def craft_upcoming_tweet(event):
-    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
+    display_day, display_month, display_time, display_url, event_datetime, hashtag = process_event(event)
     display_datetime = '%s %s %s' % (display_day, display_month, display_time)
     event_title = event['fields']['name'].encode('utf8')
-    tweet = construct_tweet(display_datetime, display_url, event_title)
+    tweet = construct_tweet(display_datetime, display_url, event_title, hashtag)
     return tweet
 
 
 def craft_tweet(event):
-    display_day, display_month, display_time, display_url, event_datetime = process_event(event)
+    display_day, display_month, display_time, display_url, event_datetime, hashtag = process_event(event)
     if event_datetime.date() == datetime.today().date():
         tweet = craft_today_tweet(event)
     else:
@@ -239,6 +258,17 @@ def add_priority_to_events(events):
             d['priority'] -= 100
     return events
 
+def add_keywords(events):
+    for event in events:
+        event_text = '%s %s %s %s' % (
+            event['fields']['name'],
+            event['fields']['long_description'],
+            event['fields']['short_description'],
+            event['fields']['free_tag']
+        )
+        event['keywords'] = extract_keywords(event_text)
+    return events
+
 
 def sort_events_by_priority(events):
     events = sorted(events, key=lambda k: k['priority'])
@@ -257,27 +287,29 @@ def craft_bitlylink(url):
 class ImportHandler(webapp2.RequestHandler):
 
     def cache_daily_event(self, import_date):
-
         value = memcache.get(import_date)
-        if not value:
+        if DEBUG or not value:
             raw_events = get_events_on_date(import_date)
-            prioritised = add_priority_to_events(raw_events)
-            filtered_events = filter_events(prioritised, import_date)
-            sorted_events = sort_events_by_priority(filtered_events)
+            events = add_priority_to_events(raw_events)
+            events = filter_events(events, import_date)
+            events = add_keywords(events)
+            events = sort_events_by_priority(events)
 
             try:
-                event = sorted_events[0]
+                event = events[0]
+                logging.info('EVENT FOUND!')
             except IndexError:
                 logging.info('SQUARK: NO EVENTS FOUND')
                 event = None
                 if len(raw_events) > 0:
-                    sorted_events = sort_events_by_priority(raw_events)
-                    event = sorted_events[0]
+                    events = sort_events_by_priority(raw_events)
+                    event = events[0]
 
             # Add in event date field
             event = add_event_date(event, import_date)
+            logging.info(event)
             memcache.set(import_date, event, time=TWEET_MEMCACHE_TTL)
-            logging.info('Set: %s' % memcache.get(import_date))
+            # logging.info('Set: %s' % memcache.get(import_date))
             return event
 
 
@@ -308,7 +340,6 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         Shares upcoming events for the week
         """
         now = datetime.now(tz=LOCAL_TZ)
-
         offset = int(self.request.get('delta', 0))
         todays_count = 'count_%s' % format_date_from_memcache(offset)
         datetime_offset = memcache.get(todays_count) or 0
