@@ -24,6 +24,8 @@ BSL_TALK = 42
 SEMINAR = 44
 MEMBERSHIP_EVENT_CODE = 45
 
+ELLIPSIS = '...'
+
 TWITTER_CHAR_LIMIT = 140
 TWEET_MEMCACHE_TTL = 60*60*24*7 # a week
 BITLY_CACHE_TTL = 60*60*24*32  # a month
@@ -176,9 +178,8 @@ def filter_events(events, current_date):
 
     filtered_events = []
     for event in events:
-        date_match = check_for_matching_dates(event, current_date)
         relevant = check_for_relevant_event(event)
-        if date_match and relevant:
+        if relevant:
             filtered_events.append(event)
 
     return filtered_events
@@ -200,6 +201,11 @@ def add_priority_to_events(events):
         # We pretty much always want to see Friday Lates
         if 'friday late' in d['fields']['name'].lower():
             events[i]['priority'] += 100
+
+        # If start date is today then probably a one off or opening day
+        current_time = datetime.now(tz=LOCAL_TZ)
+        if check_for_matching_dates(d, current_time):
+            events[i]['priority'] += 10
 
         # You encourage young people. Collect 10
         if d['fields']['event_type'] == YOUNG_PEOPLES_EVENT:
