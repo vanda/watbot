@@ -15,6 +15,8 @@ from google.appengine.api import memcache
 from random import choice
 from roomlookup import ROOMLOOKUPDICT
 
+DAYS_TO_GET = 7
+
 YOUNG_PEOPLES_EVENT = 10
 WORKSHOP = 15
 SPECIAL_EVENT = 24
@@ -276,7 +278,7 @@ class ImportHandler(webapp2.RequestHandler):
 
 
     def get(self):
-        for daycount in range(0, 6):
+        for daycount in range(0, DAYS_TO_GET):
             scandate = format_date_from_memcache(daycount)
             self.cache_daily_event(scandate)
         self.response.write('<hr>')
@@ -321,7 +323,7 @@ class HomeHandler(webapp2.RequestHandler):
         data = {}
         data['events'] = []
 
-        for daycount in range(0, 6):
+        for daycount in range(0, DAYS_TO_GET):
             event_datetime = format_date_from_memcache(daycount)
             data['events'].append(memcache.get(event_datetime))
 
