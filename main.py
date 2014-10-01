@@ -382,7 +382,6 @@ class HomeHandler(webapp2.RequestHandler):
 
 
 app = webapp2.WSGIApplication([
-    ('/import', ImportHandler),
     ('/heartbeat', HeartBeatHandler),
     ('/sevendaysharer', SevenDaySharerHandler),
     ('.*', HomeHandler)
