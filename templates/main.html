@@ -32,6 +32,7 @@
                 <h3>{{ event['fields']['name'] }}</h3>
                 <h4>{{ event.get('event_dt') }}</h4>
                 <p>{{ event['fields']['short_description'] }}</p>
+                <p>Keywords: {% for keyword in event.keywords %}{{ keyword }}{% if not loop.last %}, {% endif %}{% endfor %}</p>
                 <p>
                     <a href="http://www.vam.ac.uk/whatson/event/{{ event['pk'] }}" target="_blank" class="btn btn-primary" role="button">
 
