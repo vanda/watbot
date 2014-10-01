@@ -65,7 +65,7 @@ def get_first_int_in_list(src_list):
         except ValueError:
             pass
 
-def extract_keywords(doc,keyword_count=5):
+def extract_keywords(doc, keyword_count=5):
     d = Document(doc)
     results = d.keywords(top=keyword_count)
     # results = [(round(i,2),j) for (i,j) in results]
@@ -91,13 +91,14 @@ def send_tweet(msg, debug=False):
 
 
 def add_ordinal(day):
-    if day[-1] == '1':
-        return '%sst' % day
-    elif day[-1] == '2':
-        return '%snd' % day
-    elif day[-1] == '3':
-        return '%srd' % day
-    return '%sth' % day
+    day = str(day)
+    day_last_character = day[-1]
+    lookup = {"1": "%sst", "2": "%snd", "3": "%srd"}
+
+    try:
+        return lookup[day_last_character] % day
+    except KeyError:
+        return '%sth' % day
 
 
 def strip_leading_zero(day):
@@ -131,7 +132,7 @@ def craft_today_tweet(event):
     return tweet
 
 def make_tweet_string(display_datetime, display_url, event_title, hashtag):
-    for tag in hashtag[:]:
+    for tag in hashtag[:2]:
         if tag in event_title.lower():
             tagloc = event_title.lower().find(tag)
             event_title = event_title[:tagloc] + '#' + event_title[tagloc:]
@@ -144,16 +145,16 @@ def make_tweet_string(display_datetime, display_url, event_title, hashtag):
     # if title much shorter than hashtag list, omit the tags
     if len(event_title) < len(hashtag)*2:
         hashtag = ''
-    tweet = '%s:%s%s | %s' % (display_datetime, event_title, hashtag, display_url)
+    tweet = '%s: %s%s | %s' % (display_datetime, event_title, hashtag, display_url)
     return tweet
 
 
 def construct_tweet(display_datetime, display_url, event_title, hashtag=''):
     tweet = make_tweet_string(display_datetime, display_url, event_title, hashtag)
     if len(tweet) > TWITTER_CHAR_LIMIT:
-        MINIMAL_TWEET_PATTERN = '%s:%s | %s'
+        MINIMAL_TWEET_PATTERN = '%s: %s | %s'
         mandatory_chars_len = len(MINIMAL_TWEET_PATTERN % (display_datetime, ELLIPSIS.encode('utf8'), display_url))
-        event_title = '%s%s' % (event_title[:TWITTER_CHAR_LIMIT - mandatory_chars_len],ELLIPSIS)
+        event_title = '%s%s' % (event_title[:TWITTER_CHAR_LIMIT - mandatory_chars_len], ELLIPSIS)
         tweet = MINIMAL_TWEET_PATTERN % (display_datetime, event_title, display_url)
     return tweet
 
@@ -284,15 +285,27 @@ def craft_bitlylink(url):
     return shortlink
 
 
+def are_events_in_memcache(fn, *args, **kwargs):
+    def wrapped(*args, **kwargs):
+        date_now = format_date_from_memcache()
+        event = memcache.get(date_now)
+        if event is None:
+            ih = ImportHandler()
+            ImportHandler.get(ih)
+        fn(*args, **kwargs)
+
+    return wrapped
+
+
 class ImportHandler(webapp2.RequestHandler):
 
     def cache_daily_event(self, import_date):
         value = memcache.get(import_date)
         if DEBUG or not value:
             raw_events = get_events_on_date(import_date)
-            events = add_priority_to_events(raw_events)
-            events = filter_events(events, import_date)
-            events = add_keywords(events)
+            raw_events = add_priority_to_events(raw_events)
+            raw_events = add_keywords(raw_events)
+            events = filter_events(raw_events, import_date)
             events = sort_events_by_priority(events)
 
             try:
@@ -317,7 +330,6 @@ class ImportHandler(webapp2.RequestHandler):
         for daycount in range(0, DAYS_TO_GET):
             scandate = format_date_from_memcache(daycount)
             self.cache_daily_event(scandate)
-        self.response.write('<hr>')
 
 def event_just_starting(start_time, now=None):
     if now is None:
@@ -328,6 +340,7 @@ def event_just_starting(start_time, now=None):
     return result
 
 class HeartBeatHandler(webapp2.RequestHandler):
+    @are_events_in_memcache
     def get(self):
         """
         Regular (30mins) check to see if an event is about to start & tweet it
@@ -342,6 +355,7 @@ class HeartBeatHandler(webapp2.RequestHandler):
 
 
 class SevenDaySharerHandler(webapp2.RequestHandler):
+    @are_events_in_memcache
     def get(self):
         """
         Shares upcoming events for the week
@@ -362,6 +376,7 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
 
 
 class HomeHandler(webapp2.RequestHandler):
+    @are_events_in_memcache
     def get(self):
 
         data = {}
@@ -376,7 +391,6 @@ class HomeHandler(webapp2.RequestHandler):
 
 
 app = webapp2.WSGIApplication([
-    ('/import', ImportHandler),
     ('/heartbeat', HeartBeatHandler),
     ('/sevendaysharer', SevenDaySharerHandler),
     ('.*', HomeHandler)

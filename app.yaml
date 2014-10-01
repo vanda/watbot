@@ -9,10 +9,6 @@ handlers:
   static_files: favicon.ico
   upload: favicon\.ico
 
-- url: /import
-  script: main.app
-  login: admin
-
 - url: /heartbeat
   script: main.app
   login: admin

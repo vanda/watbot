@@ -1,10 +1,11 @@
 __author__ = 'julz'
 
 from unittest import TestCase
-from main import construct_tweet
+from main import construct_tweet, add_ordinal
 from vector import Document
 from main import event_just_starting,LOCAL_TZ
 from datetime import datetime
+
 
 class TestFunctions(TestCase):
     def test_construct_tweet(self):
@@ -17,6 +18,23 @@ class TestFunctions(TestCase):
                             event_title='the first event'*10)
         self.assertEquals(c,'1st jan 2014:the first eventthe first eventthe first eventthe first eventthe first eventthe first eventthe first eventth... | www.google.com')
         self.assertTrue(len(c)<=140)
+
+class TestOrdinals(TestCase):
+    def test_ordinal_basic(self):
+        self.assertEquals('1st', add_ordinal(1))
+        self.assertEquals('2nd', add_ordinal(2))
+        self.assertEquals('3rd', add_ordinal(3))
+        self.assertEquals('4th', add_ordinal(4))
+
+    def test_ordinal_large_numbers(self):
+        self.assertEquals('1111st', add_ordinal(1111))
+        self.assertEquals('12346th', add_ordinal(12346))
+
+    def test_ordinal_numberic_string(self):
+        self.assertEquals('4th', add_ordinal("4"))
+
+    def test_ordinal_string(self):
+        self.assertRaises(TypeError, add_ordinal("this is a string"))
 
 class TestKeywords(TestCase):
     def setUp(self):
@@ -40,6 +58,7 @@ class TestKeywords(TestCase):
          (0.11, u'delayed'), (0.11, u'discovery'),
          (0.11, u'friday'), (0.11, u'hydrogen')]
         self.assertEquals(results,known)
+
     def test_keyword_cooked(self):
         s = self.s
         from main import extract_keywords
