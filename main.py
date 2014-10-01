@@ -145,14 +145,14 @@ def make_tweet_string(display_datetime, display_url, event_title, hashtag):
     # if title much shorter than hashtag list, omit the tags
     if len(event_title) < len(hashtag)*2:
         hashtag = ''
-    tweet = '%s:%s%s | %s' % (display_datetime, event_title, hashtag, display_url)
+    tweet = '%s: %s%s | %s' % (display_datetime, event_title, hashtag, display_url)
     return tweet
 
 
 def construct_tweet(display_datetime, display_url, event_title, hashtag=''):
     tweet = make_tweet_string(display_datetime, display_url, event_title, hashtag)
     if len(tweet) > TWITTER_CHAR_LIMIT:
-        MINIMAL_TWEET_PATTERN = '%s:%s | %s'
+        MINIMAL_TWEET_PATTERN = '%s: %s | %s'
         mandatory_chars_len = len(MINIMAL_TWEET_PATTERN % (display_datetime, ELLIPSIS.encode('utf8'), display_url))
         event_title = '%s%s' % (event_title[:TWITTER_CHAR_LIMIT - mandatory_chars_len],ELLIPSIS)
         tweet = MINIMAL_TWEET_PATTERN % (display_datetime, event_title, display_url)
