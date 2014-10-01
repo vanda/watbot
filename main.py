@@ -336,7 +336,7 @@ def event_just_starting(start_time, now=None):
         now = datetime.now(tz=LOCAL_TZ)
     result = timedelta(minutes=10) < (start_time - now) < timedelta(minutes=40)
     if result:
-        logging.info('reminder tweet sent at %s, for %s time (%s)' % (now, start_time,(start_time - now)))
+        logging.info('reminder tweet sent at %s, for %s time (%s)' % (now, start_time,str(start_time - now)))
     return result
 
 class HeartBeatHandler(webapp2.RequestHandler):
