@@ -285,6 +285,14 @@ def craft_bitlylink(url):
     return shortlink
 
 
+def ensure_memcache_has_events():
+    date_now = format_date_from_memcache()
+    event = memcache.get(date_now)
+    if event is None:
+        ih = ImportHandler()
+        ImportHandler.get(ih)
+
+
 class ImportHandler(webapp2.RequestHandler):
 
     def cache_daily_event(self, import_date):
@@ -319,7 +327,6 @@ class ImportHandler(webapp2.RequestHandler):
         for daycount in range(0, DAYS_TO_GET):
             scandate = format_date_from_memcache(daycount)
             self.cache_daily_event(scandate)
-        self.response.write('<hr>')
 
 
 class HeartBeatHandler(webapp2.RequestHandler):
@@ -327,6 +334,7 @@ class HeartBeatHandler(webapp2.RequestHandler):
         """
         Regular (30mins) check to see if an event is about to start & tweet it
         """
+        ensure_memcache_has_events()
         today = format_date_from_memcache(0)
         todays_event = memcache.get(today)
         starttimestr = todays_event['event_dt']
@@ -341,6 +349,7 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         """
         Shares upcoming events for the week
         """
+        ensure_memcache_has_events()
         now = datetime.now(tz=LOCAL_TZ)
         offset = int(self.request.get('delta', 0))
         todays_count = 'count_%s' % format_date_from_memcache(offset)
@@ -359,6 +368,8 @@ class HomeHandler(webapp2.RequestHandler):
 
         data = {}
         data['events'] = []
+
+        ensure_memcache_has_events()
 
         for daycount in range(0, DAYS_TO_GET):
             event_datetime = format_date_from_memcache(daycount)
