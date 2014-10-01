@@ -65,7 +65,7 @@ def get_first_int_in_list(src_list):
         except ValueError:
             pass
 
-def extract_keywords(doc,keyword_count=5):
+def extract_keywords(doc, keyword_count=5):
     d = Document(doc)
     results = d.keywords(top=keyword_count)
     # results = [(round(i,2),j) for (i,j) in results]
@@ -291,9 +291,10 @@ class ImportHandler(webapp2.RequestHandler):
         value = memcache.get(import_date)
         if DEBUG or not value:
             raw_events = get_events_on_date(import_date)
-            events = add_priority_to_events(raw_events)
-            events = filter_events(events, import_date)
-            events = add_keywords(events)
+            raw_events = add_priority_to_events(raw_events)
+            raw_events = add_keywords(raw_events)
+            events = filter_events(raw_events, import_date)
+
             events = sort_events_by_priority(events)
 
             try:
