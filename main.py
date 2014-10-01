@@ -132,7 +132,7 @@ def craft_today_tweet(event):
     return tweet
 
 def make_tweet_string(display_datetime, display_url, event_title, hashtag):
-    for tag in hashtag[:]:
+    for tag in hashtag[:2]:
         if tag in event_title.lower():
             tagloc = event_title.lower().find(tag)
             event_title = event_title[:tagloc] + '#' + event_title[tagloc:]
