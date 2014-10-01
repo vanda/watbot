@@ -154,7 +154,7 @@ def construct_tweet(display_datetime, display_url, event_title, hashtag=''):
     if len(tweet) > TWITTER_CHAR_LIMIT:
         MINIMAL_TWEET_PATTERN = '%s: %s | %s'
         mandatory_chars_len = len(MINIMAL_TWEET_PATTERN % (display_datetime, ELLIPSIS.encode('utf8'), display_url))
-        event_title = '%s%s' % (event_title[:TWITTER_CHAR_LIMIT - mandatory_chars_len],ELLIPSIS)
+        event_title = '%s%s' % (event_title[:TWITTER_CHAR_LIMIT - mandatory_chars_len], ELLIPSIS)
         tweet = MINIMAL_TWEET_PATTERN % (display_datetime, event_title, display_url)
     return tweet
 
@@ -286,6 +286,9 @@ def craft_bitlylink(url):
 
 
 def ensure_memcache_has_events():
+    """
+    If memcache is lacking an event for today, then run an import.
+    """
     date_now = format_date_from_memcache()
     event = memcache.get(date_now)
     if event is None:
@@ -302,7 +305,6 @@ class ImportHandler(webapp2.RequestHandler):
             raw_events = add_priority_to_events(raw_events)
             raw_events = add_keywords(raw_events)
             events = filter_events(raw_events, import_date)
-
             events = sort_events_by_priority(events)
 
             try:
