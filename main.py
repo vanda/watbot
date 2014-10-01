@@ -319,6 +319,13 @@ class ImportHandler(webapp2.RequestHandler):
             self.cache_daily_event(scandate)
         self.response.write('<hr>')
 
+def event_just_starting(start_time, now=None):
+    if now is None:
+        now = datetime.now(tz=LOCAL_TZ)
+    result = timedelta(minutes=10) < (start_time - now) < timedelta(minutes=40)
+    if result:
+        logging.info('reminder tweet sent at %s, for %s time (%s)' % (now, start_time,(start_time - now)))
+    return result
 
 class HeartBeatHandler(webapp2.RequestHandler):
     def get(self):
@@ -329,7 +336,7 @@ class HeartBeatHandler(webapp2.RequestHandler):
         todays_event = memcache.get(today)
         starttimestr = todays_event['event_dt']
         start_time = datetime.strptime(starttimestr, '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
-        if timedelta(minutes=10) < start_time - datetime.now(tz=LOCAL_TZ) < timedelta(minutes=40):
+        if event_just_starting(start_time):
             tweet = craft_just_starting_tweet(event=todays_event)
             send_tweet(tweet, DEBUG)
 
@@ -340,6 +347,8 @@ class SevenDaySharerHandler(webapp2.RequestHandler):
         Shares upcoming events for the week
         """
         now = datetime.now(tz=LOCAL_TZ)
+        print now
+
         offset = int(self.request.get('delta', 0))
         todays_count = 'count_%s' % format_date_from_memcache(offset)
         datetime_offset = memcache.get(todays_count) or 0

@@ -3,17 +3,19 @@ __author__ = 'julz'
 from unittest import TestCase
 from main import construct_tweet
 from vector import Document
+from main import event_just_starting,LOCAL_TZ
+from datetime import datetime
 
 class TestFunctions(TestCase):
     def test_construct_tweet(self):
         c = construct_tweet(display_datetime='1st jan 2014', display_url='www.google.com',
                             event_title='the first event')
-        self.assertEquals(c,'1st jan 2014: the first event | www.google.com')
+        self.assertEquals(c,'1st jan 2014:the first event | www.google.com')
 
     def test_construct_long_tweet(self):
         c = construct_tweet(display_datetime='1st jan 2014', display_url='www.google.com',
                             event_title='the first event'*10)
-        self.assertEquals(c,'1st jan 2014: the first eventthe first eventthe first eventthe first eventthe first eventthe first eventthe first eventt... | www.google.com')
+        self.assertEquals(c,'1st jan 2014:the first eventthe first eventthe first eventthe first eventthe first eventthe first eventthe first eventth... | www.google.com')
         self.assertTrue(len(c)<=140)
 
 class TestKeywords(TestCase):
@@ -47,6 +49,24 @@ class TestKeywords(TestCase):
          (0.11, u'friday'), (0.11, u'hydrogen')]
         known_list = [j for (i,j) in known]
         self.assertEquals(results, known_list)
+
+class TestJustStarting(TestCase):
+
+    def test_simple_timetest(self):
+        starttime = datetime.strptime('2014-10-10 10:11:00', '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
+        now = datetime.strptime('2014-10-10 10:00:00', '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
+        self.assertTrue(event_just_starting(start_time=starttime,now=now))
+
+    def test_simple_timetest__day_difference_so_negative(self):
+        starttime = datetime.strptime('2014-11-10 10:11:00', '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
+        now = datetime.strptime('2014-10-10 10:00:00', '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
+        self.assertFalse(event_just_starting(start_time=starttime,now=now))
+
+    def test_simple_timetest_less_than_30mins(self):
+        starttime = datetime.strptime('2014-10-10 10:10:00', '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
+        now = datetime.strptime('2014-10-10 09:51:00', '%Y-%m-%d %H:%M:%S').replace(tzinfo=LOCAL_TZ)
+        self.assertTrue(event_just_starting(start_time=starttime,now=now))
+
 
 if __name__ == '__main__':
     unittest.main()
